@@ -1,16 +1,3 @@
-(defun print-grid ()
-  "Print the grid with pretty graphical inteface"
-  (dotimes (i (* +NB-LINES+ 2))
-    (dotimes (j +NB-COLUMNS+)
-      (if (evenp i)
-	  (if (= j (1- +NB-COLUMNS+))
-	      (format t "~A" '+----+)
-	      (format t "~A" '+----))
-	  (if (= j (1- +NB-COLUMNS+))
-	      (format t "~A    " '\|)
-	      (format t "~A    ~A" '\| '\|))))
-    (format t "~%")))
-    
 ;;;
 ;;; Main method
 ;;; Input key
@@ -21,7 +8,8 @@
 ;;;   + Q : quit game
 ;;;
 (defun play-game ()
-  (init-grid)
+  (set-grid)
+  ;(init-grid)
   (print-numbers)
   
   (loop
@@ -121,32 +109,52 @@
       ((funcall limit-outside i))
     (do ((j begin-inside (+ j step-inside)))
 	((funcall limit-inside j))
-      (let ((nearest-case (find-nearest-case 
-			   :direction direction
-			   :origin j
-			   :immobile i)))
-	(case direction
-	  ;; Must divide to 2 cases here
-	  ;; because the order to pass parameters to
-	  ;; APPEND-2-CASES will differ
-	  ;; depending on the moving direction
-
-	  ;; 0 or 1 : UP or DOWN
+      (case direction
+	;; Must divide to 2 cases here
+	;; because the order to pass parameters to
+	;; APPEND-2-CASES will differ
+	;; depending on the moving direction
+	
+	;; 0 or 1 : UP or DOWN
 	  ((0 1)
-	   (if (endp nearest-case)
-	       (append-2-cases (list j i)
-			       (list border i))
-	       (append-2-cases (list j i)
-			       nearest-case)))
+	   (let ((nearest-case (find-nearest-case
+				:direction direction
+				:origin j
+				:immobile i
+				:locked-border
+				(if (endp +locked-case+)
+				    -1
+				    (progn
+				      (car +locked-case+)
+				      (setf border (if (= direction 0)
+						       (1+ (car +locked-case+))
+						       (1- (car +locked-case+)))))))))
+	     (if (endp nearest-case)
+		 (append-2-cases (list j i)
+				 (list border i))
+		 (append-2-cases (list j i)
+				 nearest-case))))
 	  ;; 2 or 3 : LEFT or RIGHT
 	  ((2 3)
-	   (if (endp nearest-case)
-	       (append-2-cases (list i j)
-			       (list i border))
-	       (append-2-cases (list i j)
-			       nearest-case)))
-	  (t (format t "~%Wrong direction~%")))))
-    (setf has-been-appended NIL))
+	   (let ((nearest-case (find-nearest-case
+				:direction direction
+				:origin j
+				:immobile i
+				:locked-border
+				(if (endp +locked-case+)
+				    -1
+				    (progn
+				      (cadr +locked-case+)
+				      (setf border (if (= direction 2)
+						       (1+ (cadr +locked-case+))
+						       (1- (cadr +locked-case+)))))))))
+	     (if (endp nearest-case)
+		 (append-2-cases (list i j)
+				 (list i border))
+		 (append-2-cases (list i j)
+				 nearest-case))))
+	  (t (format t "~%Wrong direction~%"))))
+    (setf +locked-case+ (list)))
   (random-empty-case)
   )
 
@@ -154,10 +162,6 @@
 ;;; Append 2 cases passed by parameters
 ;;; case1 : to-append case
 ;;; case2 : to-be-appended case
-;;; ATTENTION : on the same line/column, the "melting" process happens only once
-;;; eg :  2 | . | 2 | 4     and we move LEFT
-;;; --->  4 | 4 | . | .
-;;; NOT : 8 | . | . | .
 ;;;
 ;;; ALGORITHM :
 ;;; 1. If 2 cases are not empty (= 0) :
@@ -182,14 +186,13 @@
     ;; Erase value of the to-append case on the grid first
     (setf (aref array-numbers x1 y1) 0)
     (if (and (not (zerop case1)) (not (zerop case2)))
-	(if (and (= case1 case2) (not has-been-appended))
+	(if (= case1 case2)
 	    ;; when 2 cases have the same value
-	    ;; and in the same column/line 2 other cases
-	    ;; haven't been appended
 	    (progn
 	      (setf (aref array-numbers x2 y2)
 		    (+ case1 case2))
-	      (setf has-been-appended T))
+	      (setf +locked-case+ (list x2 y2))
+	      )
 	    ;; when 2 cases have different value
 	    (let ((step (append-2-cases-step x1 x2 y1 y2)))
 	      (if (= x1 x2)
@@ -225,7 +228,7 @@
 ;;;   2 : LEFT
 ;;;   3 : RIGHT
 ;;;
-(defun find-nearest-case (&key direction origin immobile)
+(defun find-nearest-case (&key direction origin immobile locked-border)
   "Find the nearest case. 3 arguments needed: direction (0 for UP, 1 for DOWN, 2 for LEFT, 3 for RIGHT) ; origin : the coordinate that will be moving during the whole searching for nearest case process ; immobile : the coordinate that will stand still."
   (case direction
     ;; UP
@@ -235,7 +238,9 @@
       :standing immobile
       :sens -1
       :limit (lambda (k)
-	       (>= k 0))
+	       (>= k (if (not (= locked-border -1))
+			 (1+ locked-border)
+			 0)))
       :strategy 1))
     ;; DOWN
     ((1) 
@@ -244,7 +249,9 @@
       :standing immobile 
       :sens 1 
       :limit (lambda (k)
-	       (<= k (1- +NB-LINES+)))
+	       (<= k (if (not (= locked-border -1))
+			 (1- locked-border)
+			 (1- +NB-LINES+))))
       :strategy 1))
     ;; LEFT
     ((2)
@@ -253,7 +260,9 @@
       :standing immobile 
       :sens -1
       :limit (lambda (k)
-	       (>= k 0))
+	       (>= k (if (not (= locked-border -1))
+			 (1+ locked-border)
+			 0)))
       :strategy 0))
     ;; RIGHT
     ((3)
@@ -262,7 +271,9 @@
       :standing immobile 
       :sens 1
       :limit (lambda (k)
-	       (<= k (1- +NB-COLUMNS+)))
+	       (<= k (if (not (= locked-border -1))
+			 (1- locked-border)
+			 (1- +NB-COLUMNS+))))
       :strategy 0))
     (t (format t "Wrong direction"))))
 
@@ -305,7 +316,7 @@
   (defparameter entered-key nil)
   (defparameter +NB-LINES+ 4)
   (defparameter +NB-COLUMNS+ 4)
-  (defparameter has-been-appended NIL)
+  (defparameter +locked-case+ (list))
   (defparameter array-numbers 
     (make-array (list +NB-LINES+ +NB-COLUMNS+))))
 
@@ -316,10 +327,23 @@
   "Set a customized grid (just for test)"
   (init-parameter)
   (setf (aref array-numbers 0 0) 2)
-  (setf (aref array-numbers 0 2) 4)
+  (setf (aref array-numbers 1 0) 2)
+  (setf (aref array-numbers 2 0) 2)
+  (setf (aref array-numbers 3 0) 2)
+
+  (setf (aref array-numbers 0 1) 2)
+  (setf (aref array-numbers 1 1) 2)
+  (setf (aref array-numbers 2 1) 2)
+  (setf (aref array-numbers 3 1) 2)
+  
+  (setf (aref array-numbers 0 2) 2)
+  (setf (aref array-numbers 1 2) 2)
   (setf (aref array-numbers 2 2) 2)
   (setf (aref array-numbers 3 2) 2)
+  
+  (setf (aref array-numbers 0 3) 2)
   (setf (aref array-numbers 1 3) 2)
+  (setf (aref array-numbers 2 3) 2)
   (setf (aref array-numbers 3 3) 2))
 
 ;;;
@@ -373,6 +397,39 @@
   (let ((result T))
     (dotimes (i +NB-LINES+)
       (dotimes (j +NB-COLUMNS+)
-	(when (= (aref array-numbers i j) 0)
-	    (setf result NIL))))
+	(when (test-case-surrounding i j)
+	  (setf result NIL))))
     result))
+
+(defun test-case-surrounding (i j)
+  "Test if a case is moveable on its surrounding (up, down, left, right)"
+  (labels 
+      ((test-left (x y)
+	 (= (aref array-numbers x y) (aref array-numbers x (1- y))))
+       (test-right (x y)
+	 (= (aref array-numbers x y) (aref array-numbers x (1+ y))))
+       (test-up (x y)
+	 (= (aref array-numbers x y) (aref array-numbers (1- x) y)))
+       (test-down (x y)
+	 (= (aref array-numbers x y) (aref array-numbers (1+ x) y))))
+    (let ((limit-line (1- +NB-LINES+))
+	  (limit-col (1- +NB-COLUMNS+)))
+      (cond
+	((and (zerop i) (zerop j))
+	 (and (test-right i j) (test-down i j)))
+	((and (zerop i) (= j limit-col))
+	 (and (test-left i j) (test-down i j)))
+	((and (= i limit-line) (zerop j))
+	 (and (test-right i j) (test-up i j)))
+	((and (= i limit-line) (= j limit-col))
+	 (and (test-left i j) (test-up i j)))
+	((and (< 0 j limit-col) (zerop i))
+	 (and (test-left i j) (test-right i j) (test-down i j)))
+	((and (< 0 j limit-col) (= i limit-line))
+	 (and (test-left i j) (test-right i j) (test-up i j)))
+	((and (< 0 i limit-line) (zerop j))
+	 (and (test-up i j) (test-down i j) (test-right i j)))
+	((and (< 0 i limit-line) (= j limit-col))
+	 (and (test-up i j) (test-down i j) (test-left i j)))
+	(t (and (test-left i j) (test-right i j) (test-up i j) (test-down i j))))))
+  )
