@@ -1,72 +1,61 @@
-(defun hello-1 ()
+(defun main ()
   (with-ltk ()
-    (let ((b (make-instance 'button
-			    :master nil
-			    :text "press me"
-			    :command (lambda () (format t "Hello world!~&")))))
-      (pack b))))
-
-(defun hello-2 ()
-  (with-ltk ()
-    (let* ((f (make-instance 'frame))
-	   (b1 (make-instance 'button
-			      :master f
-			      :text "button 1"
-			      :command (lambda () (format t "Button 1~&"))))
-	   (b2 (make-instance 'button
-			      :master f
-			      :text "button 2"
-			      :command (lambda () (format t "Button 2~&")))))
-      (pack f)
-      (pack b1 :side :left)
-      (pack b2 :side :left)
-      (configure f :borderwidth 3)
-      (configure f :relief :sunken))))
-
-(defun canvas-test ()
-  (with-ltk ()
-    (let* ((sc (make-instance 'canvas))
-	   (c (canvas sc)))
-      (pack sc :expand 1 :fill :both)
-      (scrollregion c 0 0 800 800))))
-
-(defun make-grid ()
-  (with-ltk ()
-    (let* ((sc (make-instance 'canvas))
-	   (c (canvas sc))
-	   (gr (create-rectangle c 0 0 200 200))
-	   (l1 (create-line c (list 0 50 200 50)))
-	   (l2 (create-line c (list 0 100 200 100)))
-	   (l3 (create-line c (list 0 150 200 150)))
-	   (l4 (create-line c (list 50 0 50 200)))
-	   (l5 (create-line c (list 100 0 100 200)))
-	   (l6 (create-line c (list 150 0 150 200)))
+    (let* ((frame-sub (make-instance 'frame))
+	   (bt-new-game (make-instance 'button
+				       :master frame-sub
+				       :text "New game"))
+	   (lb-2048 (make-instance 'label
+				      :master frame-sub
+				      :text 2048))
+	   (frame-grid (make-instance 'frame))
+	   (canvas (make-instance 'canvas :master frame-grid))
+	   (image (make-image))
+	   (rectangle (create-rectangle canvas 29 29 351 351))
 	   )
-      (pack sc))))
+      ;; Configuring the frame, button and label
+      (pack frame-sub :expand t :fill :x)
+      (pack bt-new-game :side :left :padx 30 :pady 20)
+      (pack lb-2048 :side :right :padx 30 :pady 20)
 
-(defun img-example ()
-  (with-ltk ()
-    (let ((image (make-image)))
-      (image-load image "~/2.gif")
-      (let ((canvas (make-instance 'canvas)))
-	(create-image canvas 0 0 :image image)
-	(configure canvas :width 300)
-	(configure canvas :height 300)
-	(pack canvas)
-	(bind canvas "<KeyPress-Return>"
-	      (lambda (evt)
-		(format t "Button down")))))))
-    
-(defun make-frame ()
-  (with-ltk ()
-    (let* ((f (make-instance 'frame)))
-      (pack f)
-      (configure f :width 500)
-      (configure f :height 500)
-      (configure f :relief :sunken)
-      (configure f :takefocus t)
-      (focus f)
-      (bind f "<KeyPress>"
+      ;; Configuring the canvas
+      (configure canvas :width 380 :height 380)
+      (configure frame-grid :takefocus t)
+      (focus frame-grid)
+      (pack frame-grid :after frame-sub)
+      (pack canvas)
+      
+      ; Draw the lines
+      (itemconfigure canvas rectangle :width 5)
+      (itemconfigure canvas rectangle :outline :slategray)
+      (itemconfigure canvas rectangle :fill :beige)
+      
+      ; Horizontal lines
+      (create-line canvas (list 29 110 351 110))
+      (create-line canvas (list 29 190 351 190))
+      (create-line canvas (list 29 270 351 270))
+      
+      ;Vertical lines
+      (create-line canvas (list 110 29 110 351))
+      (create-line canvas (list 190 29 190 351))
+      (create-line canvas (list 270 29 270 351))
+
+      (image-load image "~/Desktop/Prog3/PROJECT/src/img/number-2.png")
+      (setf image (create-image canvas 33 33 :image image))
+      (bind frame-grid "<KeyPress>"
 	    (lambda (evt)
-	      (format t "~%~A" (event-keycode evt))))
+	      (case (event-keycode evt)
+		((111) ;; UP
+		 ;(itemdelete canvas image)
+		 (itemmove canvas image 0 -80)
+		 )
+		((113) ;; LEFT
+		 (itemmove canvas image -80 0)
+		 )
+		((114) ;; RIGHT
+		 (itemmove canvas image 80 0)
+		 )
+		((116) ;; DOWN
+		 (itemmove canvas image 0 80))
+		)))
       )))
+			 
