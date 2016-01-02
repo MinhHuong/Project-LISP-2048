@@ -1,6 +1,14 @@
+(defparameter *custom-pathname* nil)
+
 (defun main ()
   (with-ltk ()
-    (let* ((frame-main (make-instance 'frame))
+    (let* ((lb-pathname (make-instance 'label
+				       :text "Please enter a valid pathname leading to the directory where you save the project (eg: ~/Desktop/Prog3/PROJECT/)"))
+	   (lb-input-warning (make-instance 'label
+					    :text "WARNING : your input pathname must end with /"))
+	   (entry-pathname (make-instance 'entry))
+	   (bt-test (make-instance 'button :text "Submit path"))
+	   (frame-main (make-instance 'frame))
 	   (frame-sub (make-instance 'frame :master frame-main))
 	   (lb-2048 (make-instance 'label
 				   :master frame-sub
@@ -15,43 +23,60 @@
 				    (init-grid)
 				    (paint canvas)
 				    (focus frame-grid)
-				    ))))
-      ;; Pack the main frame
-      (pack frame-main)
+				    )))
+	   )
       
-      ;; Configuring the frame, button and label
-      (pack frame-sub :expand t :fill :x :side :top)
-      (pack bt-new-game :side :left :padx 30 :pady 20)
-      (pack lb-2048 :side :right :padx 30 :pady 20)
+      (pack lb-pathname)
+      (pack lb-input-warning)
+      (pack entry-pathname)
+      (pack bt-test)
 
-      ;; Configuring the canvas
-      (configure canvas :width 380 :height 380)
-      (configure frame-grid :takefocus t)
-      (focus frame-grid)
-      (pack frame-grid :after frame-sub :side :bottom)
-      (pack canvas)
-      
-      (init-grid)
-      (paint canvas)
-
-      (bind frame-grid "<KeyPress>"
-      	    (lambda (evt)
-      	      (case (event-keycode evt)
-      		((111) (run-up))
-      		((113) (run-left))
-      		((114) (run-right))
-      		((116) (run-down)))
+      (bind bt-test "<ButtonPress>"
+	    (lambda (evt)
+	      (declare (ignore evt))
+	      (setf *custom-pathname* (text entry-pathname))
+	      (destroy entry-pathname)
+	      (destroy bt-test)
+	      (destroy lb-pathname)
+	      (destroy lb-input-warning)
+	      
+	      ;; Pack the main frame
+	      (pack frame-main)
+	      
+	      ;; Configuring the frame, button and label
+	      (pack frame-sub :expand t :fill :x :side :top)
+	      (pack bt-new-game :side :left :padx 30 :pady 20)
+	      (pack lb-2048 :side :right :padx 30 :pady 20)
+	      
+	      ;; Configuring the canvas
+	      (configure canvas :width 380 :height 380)
+	      (configure frame-grid :takefocus t)
+	      (focus frame-grid)
+	      (pack frame-grid :after frame-sub :side :bottom)
+	      (pack canvas)
+	      
+	      (init-grid)
 	      (paint canvas)
-	      (when (check-if-2048)
-		; in order to unfocus the frame-grid, so key press event doesn't work anymore
-		(focus frame-main)
-		(let ((win-msg (create-text canvas 160 0 "You win!")))
-		  (itemconfigure canvas win-msg :font :tahoma)
-		  ))
-	      (unless (check-possibility)
-		(focus frame-main)
-		(let ((lose-msg (create-text canvas 160 0 "You lose!")))
-		  (itemconfigure canvas lose-msg :font :tahoma)))
+	      
+	      (bind frame-grid "<KeyPress>"
+		    (lambda (evt)
+		      (case (event-keycode evt)
+			((111) (run-up))
+			((113) (run-left))
+			((114) (run-right))
+			((116) (run-down)))
+		      (paint canvas)
+		      (when (check-if-2048)
+					; in order to unfocus the frame-grid, so key press event doesn't work anymore
+			(focus frame-main)
+			(let ((win-msg (create-text canvas 160 0 "You win!")))
+			  (itemconfigure canvas win-msg :font :tahoma)
+			  ))
+		      (unless (check-possibility)
+			(focus frame-main)
+			(let ((lose-msg (create-text canvas 160 0 "You lose!")))
+			  (itemconfigure canvas lose-msg :font :tahoma)))
+		      ))
 	      ))
       )))
 
@@ -79,8 +104,10 @@
       (dotimes (j +NB-LINES+)
 	(let ((image (make-image)))
 	  (when (numberp (aref *array-numbers* i j))
-	    (image-load image 
-			(concatenate 'string "~/Desktop/Prog3/PROJECT/src/img/number-"
+	    (image-load image  
+			(concatenate 'string 
+				     *custom-pathname*
+				     "img/number-"
 				     (write-to-string (aref *array-numbers* i j)) ".png"))
 	    (create-image canvas (+ 33 (* 80 i))  (+ 33 (* 80 j)) :image image)))))))
 
