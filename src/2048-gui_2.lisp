@@ -1,6 +1,14 @@
+(defparameter *custom-pathname* nil)
+
 (defun main ()
   (with-ltk ()
-    (let* ((frame-main (make-instance 'frame))
+    (let* ((lb-pathname (make-instance 'label
+				       :text "Please enter a valid pathname leading to the directory where you save the project (eg: ~/Desktop/Prog3/PROJECT/)"))
+	   (lb-input-warning (make-instance 'label
+					    :text "WARNING : your input pathname must end with /"))
+	   (entry-pathname (make-instance 'entry))
+	   (bt-test (make-instance 'button :text "Submit path"))
+	   (frame-main (make-instance 'frame))
 	   (frame-sub (make-instance 'frame :master frame-main))
 	   (lb-2048 (make-instance 'label
 				   :master frame-sub
@@ -15,95 +23,93 @@
 				    (init-grid)
 				    (paint canvas)
 				    (focus frame-grid)
-				    ))))
- 
-      ;; Pack the main frame
-      (pack frame-main)
-	      
-      ;; Configuring the frame, button and label
-      (pack frame-sub :expand t :fill :x :side :top)
-      (pack bt-new-game :side :left :padx 30 :pady 20)
-      (pack lb-2048 :side :right :padx 30 :pady 20)
+				    )))
+	   )
       
-      ;; Configuring the canvas
-      (configure canvas :width 380 :height 380)
-      (configure frame-grid :takefocus t)
-      (focus frame-grid)
-      (pack frame-grid :after frame-sub :side :bottom)
-      (pack canvas)
-	      
-      (init-grid)
-      (paint canvas)
-      
-      (bind frame-grid "<KeyPress>"
+      (pack lb-pathname)
+      (pack lb-input-warning)
+      (pack entry-pathname)
+      (pack bt-test)
+
+      (bind bt-test "<ButtonPress>"
 	    (lambda (evt)
-	      (case (event-keycode evt)
-		((111) (run-up canvas))
-		((113) (run-left canvas))
-		((114) (run-right canvas))
-		((116) (run-down canvas)))
+	      (declare (ignore evt))
+	      (setf *custom-pathname* (text entry-pathname))
+	      (destroy entry-pathname)
+	      (destroy bt-test)
+	      (destroy lb-pathname)
+	      (destroy lb-input-warning)
+	      
+	      ;; Pack the main frame
+	      (pack frame-main)
+	      
+	      ;; Configuring the frame, button and label
+	      (pack frame-sub :expand t :fill :x :side :top)
+	      (pack bt-new-game :side :left :padx 30 :pady 20)
+	      (pack lb-2048 :side :right :padx 30 :pady 20)
+	      
+	      ;; Configuring the canvas
+	      (configure canvas :width 380 :height 380)
+	      (configure frame-grid :takefocus t)
+	      (focus frame-grid)
+	      (pack frame-grid :after frame-sub :side :bottom)
+	      (pack canvas)
+	      
+	      (init-grid)
 	      (paint canvas)
-	      (when (check-if-2048)
-		(focus frame-main)
-		(let ((win-msg (create-text canvas 160 0 "You win!")))
-		  (itemconfigure canvas win-msg :font :tahoma)
-		  ))
-	      (unless (check-possibility)
-		(focus frame-main)
+	      
+	      (bind frame-grid "<KeyPress>"
+		    (lambda (evt)
+		      (case (event-keycode evt)
+			((111) (run-up))
+			((113) (run-left))
+			((114) (run-right))
+			((116) (run-down)))
+		      (paint canvas)
+		      (when (check-if-2048)
+					; in order to unfocus the frame-grid, so key press event doesn't work anymore
+			(focus frame-main)
+			(let ((win-msg (create-text canvas 160 0 "You win!")))
+			  (itemconfigure canvas win-msg :font :tahoma)
+			  ))
+		      (unless (check-possibility)
+			(focus frame-main)
 			(let ((lose-msg (create-text canvas 160 0 "You lose!")))
 			  (itemconfigure canvas lose-msg :font :tahoma)))
+		      ))
 	      ))
       )))
 
 (defun paint (canvas)
-  ;; Clear everything first
   (clear canvas)
 
-  ;; Paint the cells and its contained number
-  (dotimes (x +NB-LINES+)
-    (dotimes (y +NB-LINES+)
-      ;; each numbers is contained in a small rectangle cell
-      (let ((cell (create-rectangle canvas 
-				    (+ 30 (* 80 x))
-					 (+ 30 (* 80 y))
-					 (+ 30 (* 80 (1+ x)))
-					 (+ 30 (* 80 (1+ y)))))
-	    (value-cell (aref *array-numbers* x y)))
-	(itemconfigure canvas cell :width 9)
-	(itemconfigure canvas cell :outline "gray63")
-	(if (numberp value-cell)
-	    (let* ((value-elements (gethash value-cell +cell-elements+))
-		   (txt (create-text canvas 
-				   (+ 30 (* 80 x) (getf value-elements :dx))
-				   (+ 30 (* 80 y) (getf value-elements :dy))
-				   (write-to-string value-cell))))
-	      (itemconfigure canvas cell :fill (getf value-elements :bgcolor))
-	      (itemconfigure canvas txt :font (getf value-elements :font-size))
-	      (itemconfigure canvas txt :fill (getf value-elements :font-color)))
-	    (itemconfigure canvas cell :fill "gray77")))))
-  )
-
-(defconstant +cell-elements+
-  (let ((table (make-hash-table)))
-    (dolist (cell '((2 "rosybrown1" "white" "Tahoma 32 bold" 25 15)
-		    (4 "darkgoldenrod1" "white" "Tahoma 32 bold" 25 15)
-		    (8 "orangered2" "white" "Tahoma 32 bold" 25 15)
-		    (16 "mediumpurple" "white" "Tahoma 32 bold" 11 16)
-		    (32 "aquamarine4" "white" "Tahoma 32 bold" 11 16)
-		    (64 "dark salmon" "white" "Tahoma 32 bold" 11 16)
-		    (128 "chocolate1" "white" "Tahoma 26 bold" 4 20)
-		    (256 "maroon3" "white" "Tahoma 26 bold" 4 20)
-		    (512 "deepskyblue4" "white" "Tahoma 26 bold" 4 20)
-		    (1024 "darkgrey" "white" "Tahoma 20 bold" 2 26)
-		    (2048 "black" "white" "Tahoma 20 bold" 2 26)
-		    ))
-      (setf (gethash (car cell) table)
-	    (list :bgcolor (first (cdr cell))
-		  :font-color (second (cdr cell))
-		  :font-size (third (cdr cell))
-		  :dx (fourth (cdr cell))
-		  :dy (fifth (cdr cell)))))
-    table))
+  (let ((rectangle (create-rectangle canvas 29 29 351 351)))
+    ; Draw the rectangle
+    (itemconfigure canvas rectangle :width 5)
+    (itemconfigure canvas rectangle :outline :slategray)
+    (itemconfigure canvas rectangle :fill :beige)
+    
+    ; Draw horizontal lines
+    (create-line canvas (list 29 110 351 110))
+    (create-line canvas (list 29 190 351 190))
+    (create-line canvas (list 29 270 351 270))
+    
+    ; Draw vertical lines
+    (create-line canvas (list 110 29 110 351))
+    (create-line canvas (list 190 29 190 351))
+    (create-line canvas (list 270 29 270 351))
+    
+    ; Add numbers
+    (dotimes (i +NB-LINES+)
+      (dotimes (j +NB-LINES+)
+	(let ((image (make-image)))
+	  (when (numberp (aref *array-numbers* i j))
+	    (image-load image  
+			(concatenate 'string 
+				     *custom-pathname*
+				     "img/number-"
+				     (write-to-string (aref *array-numbers* i j)) ".png"))
+	    (create-image canvas (+ 33 (* 80 i))  (+ 33 (* 80 j)) :image image)))))))
 
 ;;;
 ;;; ALGORITHME PART
@@ -166,19 +172,6 @@
           (push (cons x y) cells))))
     cells))
 
-(defun init-grid-test ()
-  (setf (aref *array-numbers* 0 0) 2)
-  (setf (aref *array-numbers* 1 0) 4)
-  (setf (aref *array-numbers* 2 0) 8)
-  (setf (aref *array-numbers* 3 0) 16)
-  (setf (aref *array-numbers* 1 1) 32)
-  (setf (aref *array-numbers* 2 1) 64)
-  (setf (aref *array-numbers* 3 1) 128)
-  (setf (aref *array-numbers* 1 2) 256)
-  (setf (aref *array-numbers* 2 2) 512)
-  (setf (aref *array-numbers* 3 2) 1024)
-  (setf (aref *array-numbers* 3 3) 2048))
-
 ;;;
 ;;; Initialize a grid
 ;;;
@@ -209,8 +202,7 @@
       (when (or (check-if-equal x y (1+ x) y)
                 (and (not (check-if-case-empty x y))
                      (check-if-case-empty (1+ x) y)))
-        (return-from can-move-right t))))
-  NIL)
+        (return-from can-move-right t)))))
 
 (defun can-move-left ()
   (dotimes (x (1- +NB-LINES+))
@@ -218,8 +210,7 @@
       (when (or (check-if-equal x y (1+ x) y)
                 (and (check-if-case-empty x y)
                      (not (check-if-case-empty (1+ x) y))))
-        (return-from can-move-left t))))
-  NIL)
+        (return-from can-move-left t)))))
 
 (defun can-move-up ()
   (dotimes (y (1- +NB-LINES+))
@@ -227,8 +218,7 @@
       (when (or (check-if-equal x y x (1+ y))
                 (and (check-if-case-empty x y)
                      (not (check-if-case-empty x (1+ y)))))
-        (return-from can-move-up t))))
-  NIL)
+        (return-from can-move-up t)))))
 
 (defun can-move-down ()
   (dotimes (y (1- +NB-LINES+))
@@ -236,8 +226,7 @@
       (when (or (check-if-equal x y x (1+ y))
                 (and (not (check-if-case-empty x y))
                      (check-if-case-empty x (1+ y))))
-        (return-from can-move-down t))))
-  NIL)
+        (return-from can-move-down t)))))
 		
 (defun swap-with-nil-case (x1 y1 x2 y2)
   (let ((value1 (aref *array-numbers* x1 y1))
@@ -274,7 +263,7 @@
       (when (check-if-equal x y (1+ x) y)
         (return-from check-move t)))))
 	
-(defun move-right (canvas)
+(defun move-right ()
   (let ((m nil))
     (dotimes (y +NB-LINES+)
       (do ((x (- +NB-LINES+ 2) (1- x)))
@@ -283,27 +272,24 @@
 	  (let ((n x))	
 	    (loop
 	       (cond 
-		 ((= n (1- +NB-LINES+)) (return))
-		 ((check-if-case-empty (1+ n) y)
-		  (swap-with-nil-case (1+ n) y n y)
-		  (incf n))
-		 ((check-if-equal (1+ n) y n y)
-		  (when (or (null m) (not(= (1+ n) m)))
-		    (combine-two-case (1+ n) y n y)
-		    (setq m (1+ n)))
-		  (return))
-		 (t (return)))
-	       ;(paint canvas)
-	       ;(sleep 0.01)
-	       ))))
+	       	((= n (1- +NB-LINES+)) (return))
+		      ((check-if-case-empty (1+ n) y)
+		       (swap-with-nil-case (1+ n) y n y)
+		       (incf n))
+		      ((check-if-equal (1+ n) y n y)
+		         (when (or (null m) (not(= (1+ n) m)))
+			         (combine-two-case (1+ n) y n y)
+			         (setq m (1+ n)))
+		           (return))
+		      (t (return)))))))
       (setq m nil))))
 
-(defun run-right (canvas)
+(defun run-right ()
   (when (can-move-right)
-    (move-right canvas)
+    (move-right)
     (random-values)))
 
-(defun move-left (canvas)
+(defun move-left ()
   (let ((m nil))
     (dotimes (y +NB-LINES+)
       (do ((x 1 (1+ x)))
@@ -322,18 +308,15 @@
 			(setq m (1- n)))
 		      (return))
 		     (t
-		      (return)))
-		 ;(paint canvas)
-		 ;(sleep 0.01)
-	       ))))
+		      (return)))))))
       (setq m nil))))
 
-(defun run-left (canvas)
+(defun run-left ()
   (when (can-move-left)
-    (move-left canvas)
+    (move-left)
     (random-values)))
 
-(defun move-down (canvas)
+(defun move-down ()
   (let ((m nil))
     (dotimes (x +NB-LINES+)
       (do ((y (- +NB-LINES+ 2) (1- y)))
@@ -352,18 +335,15 @@
 			(setq m (1+ n)))
 		      (return))
 		     (t
-		      (return)))
-	       ;(paint canvas)
-	       ;(sleep 0.01)
-	       ))))
+		      (return)))))))
       (setq m nil))))
 
-(defun run-down (canvas)
+(defun run-down ()
   (when (can-move-down)
-    (move-down canvas)
+    (move-down)
     (random-values)))
 
-(defun move-up (canvas)
+(defun move-up ()
   (let ((m nil))
     (dotimes (x +NB-LINES+)
       (do ((y 1 (1+ y)))
@@ -382,13 +362,10 @@
 			(setq m (1- n)))
 		      (return))
 		     (t
-		      (return)))
-	       ;(paint canvas)
-	       ;(sleep 0.01)
-	       ))))
+		      (return)))))))
       (setq m nil))))
 
-(defun run-up (canvas)
+(defun run-up ()
   (when (can-move-up)
-    (move-up canvas)
+    (move-up)
     (random-values)))

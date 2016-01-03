@@ -12,7 +12,7 @@
 			 :master frame-sub
 			 :text "New game"
 			 :command (lambda ()
-				    (init-grid)
+				    (init-grid-test)
 				    (paint canvas)
 				    (focus frame-grid)
 				    ))))
@@ -56,32 +56,26 @@
       )))
 
 (defun paint (canvas)
-  ;; Clear everything first
   (clear canvas)
 
-  ;; Paint the cells and its contained number
-  (dotimes (x +NB-LINES+)
-    (dotimes (y +NB-LINES+)
-      ;; each numbers is contained in a small rectangle cell
-      (let ((cell (create-rectangle canvas 
-				    (+ 30 (* 80 x))
-					 (+ 30 (* 80 y))
-					 (+ 30 (* 80 (1+ x)))
-					 (+ 30 (* 80 (1+ y)))))
-	    (value-cell (aref *array-numbers* x y)))
-	(itemconfigure canvas cell :width 9)
-	(itemconfigure canvas cell :outline "gray63")
-	(if (numberp value-cell)
-	    (let* ((value-elements (gethash value-cell +cell-elements+))
-		   (txt (create-text canvas 
-				   (+ 30 (* 80 x) (getf value-elements :dx))
-				   (+ 30 (* 80 y) (getf value-elements :dy))
-				   (write-to-string value-cell))))
-	      (itemconfigure canvas cell :fill (getf value-elements :bgcolor))
-	      (itemconfigure canvas txt :font (getf value-elements :font-size))
-	      (itemconfigure canvas txt :fill (getf value-elements :font-color)))
-	    (itemconfigure canvas cell :fill "gray77")))))
-  )
+  (let ((rectangle (create-rectangle canvas 29 29 357 357)))
+    ; Draw the rectangle
+    (itemconfigure canvas rectangle :width 5)
+    (itemconfigure canvas rectangle :outline :slategray)
+    (itemconfigure canvas rectangle :fill :beige)
+    
+    ; Draw horizontal lines
+    ;; (create-line canvas (list 29 110 351 110))
+    ;; (create-line canvas (list 29 190 351 190))
+    ;; (create-line canvas (list 29 270 351 270))
+    
+    ;; ; Draw vertical lines
+    ;; (create-line canvas (list 110 29 110 351))
+    ;; (create-line canvas (list 190 29 190 351))
+    ;; (create-line canvas (list 270 29 270 351))
+    
+    (drawing canvas)
+    ))
 
 (defconstant +cell-elements+
   (let ((table (make-hash-table)))
@@ -104,6 +98,28 @@
 		  :dx (fourth (cdr cell))
 		  :dy (fifth (cdr cell)))))
     table))
+
+(defun drawing (canvas)
+  (dotimes (x +NB-LINES+)
+    (dotimes (y +NB-LINES+)
+      ;; each numbers is contained in a small rectangle cell
+      (let ((value-cell (aref *array-numbers* x y)))
+	(when (numberp value-cell)
+	  (let* ((value-elements (gethash value-cell +cell-elements+))
+		 (cell (create-rectangle canvas 
+					 (+ 30 (* 80 x) 5)
+					 (+ 30 (* 80 y) 5)
+					 (+ 30 (* 80 (1+ x)))
+					 (+ 30 (* 80 (1+ y)))))
+		 (txt (create-text canvas 
+				   (+ 33 (* 80 x)  (getf value-elements :dx))
+				   (+ 33 (* 80 y)  (getf value-elements :dy))
+				   (write-to-string value-cell))))
+	    (itemconfigure canvas cell :fill (getf value-elements :bgcolor))
+	    (itemconfigure canvas txt :font (getf value-elements :font-size))
+	    (itemconfigure canvas txt :fill (getf value-elements :font-color))
+	    (itemconfigure canvas cell :outline (getf value-elements :bgcolor))
+	     ))))))
 
 ;;;
 ;;; ALGORITHME PART
