@@ -19,6 +19,9 @@
 				    (paint canvas)
 				    (focus frame-grid)
 				    ))))
+      ;; Set window's title
+      (wm-title *tk* "LINF13 - 2048")
+
       ;; Pack the main frame
       (pack frame-main)
 	      
